@@ -22,6 +22,7 @@ int sprite_height = 0;
 bool init();
 SDL_Surface* load_optimized_image(const char*);
 SDL_Texture* load_texture(const char*);
+void mod_color(SDL_Texture* texture, uint8_t red, uint8_t green, uint8_t blue);
 bool load_media();
 void cleanup();
 void update_window_surface();
@@ -133,10 +134,17 @@ SDL_Texture* load_texture(const char* path) {
 	return texture;
 }
 
+void mod_color(SDL_Texture* texture, uint8_t red, uint8_t green, uint8_t blue)
+{
+	SDL_SetTextureColorMod(texture, red, green, blue);
+}
+
 bool load_media() {
 
 	sprite_sheet = load_texture("assets/images/circles.png");
 	if (sprite_sheet == NULL) return false;
+
+	mod_color(sprite_sheet, 100, 100, 100);
 
 	// top left
 	sprite_clips[0].x = 0;
