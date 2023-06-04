@@ -47,7 +47,7 @@ bool load_font_texture(const char* text, SDL_Color color);
 bool load_media();
 void cleanup();
 void update_window_surface();
-void render_sprite(Texture*, int, int, SDL_Rect*);
+void render_sprite(Texture*, int, int, SDL_Rect*, SDL_Rect*);
 void render_sprite_fullscreen(Texture* texture);
 void render_circles();
 
@@ -87,8 +87,11 @@ int main(int argc, char **argv) {
 		render_circles();
 
 		Texture* texture = &textures[TEXTURE_FONT];
-		SDL_Rect rect { 0, 0, texture->width, texture->height };
-		render_sprite(texture, (SCREEN_WIDTH - texture->width)/2, (SCREEN_HEIGHT - texture->height)/2, &rect);
+		SDL_Rect size_rect { 0, 0, texture->width, texture->height };
+		SDL_Rect clip_rect { 0, 0, texture->width, texture->height };
+		int x = (SCREEN_WIDTH - size_rect.w)/2;
+		int y = (SCREEN_HEIGHT - size_rect.h)/2;
+		render_sprite(texture, x, y, &clip_rect, &size_rect);
 		
 		// update screen
 		SDL_RenderPresent(window_renderer);
@@ -112,21 +115,22 @@ void update_window_surface() {
 void render_circles() { 
 	
 	Texture* texture = &textures[TEXTURE_CIRCLES];
-	
-	render_sprite(texture, 0,0, &sprite_clips[0]);
 
-	render_sprite(texture, SCREEN_WIDTH - sprite_clips[1].w, 0, &sprite_clips[1]);
+	SDL_Rect size_rect = { 0, 0, texture->width / 2, texture->height / 2 };
 
-	render_sprite(texture, 0, SCREEN_HEIGHT - sprite_clips[2].h, &sprite_clips[2]);
+	render_sprite(texture, 0,0, &sprite_clips[0], &size_rect);
 
-	render_sprite(texture, SCREEN_WIDTH - sprite_clips[3].w, SCREEN_HEIGHT - sprite_clips[3].h, &sprite_clips[3]);
+	render_sprite(texture, SCREEN_WIDTH - sprite_clips[1].w, 0, &sprite_clips[1], &size_rect);
+
+	render_sprite(texture, 0, SCREEN_HEIGHT - sprite_clips[2].h, &sprite_clips[2], &size_rect);
+
+	render_sprite(texture, SCREEN_WIDTH - sprite_clips[3].w, SCREEN_HEIGHT - sprite_clips[3].h, &sprite_clips[3], &size_rect);
 }
 
-void render_sprite(Texture* texture, int x, int y, SDL_Rect* clip_rect) {
-	SDL_Rect rect = { x, y, texture->width, texture->height };
-	rect.w = clip_rect->w;
-	rect.h = clip_rect->h;
-	SDL_RenderCopy(window_renderer, texture->sdl_texture, clip_rect, &rect);
+void render_sprite(Texture* texture, int x, int y, SDL_Rect* clip_rect, SDL_Rect* size_rect) {
+	size_rect->x = x;
+	size_rect->y = y;
+	SDL_RenderCopy(window_renderer, texture->sdl_texture, clip_rect, size_rect);
 }
 
 void render_sprite_fullscreen(Texture* texture) { 
@@ -241,7 +245,7 @@ bool load_media() {
 		printf("Failed to load font! SDL_ttf Error: %s\n", TTF_GetError());
 		return false;
 	}
-	SDL_Color text_color = { 150, 0, 125 };
+	SDL_Color text_color = { 75, 255, 125 };
 	if (!load_font_texture(" THE MATRIX ", text_color)) return false;
 
 	// top left
