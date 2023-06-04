@@ -14,6 +14,7 @@ enum TEXTURES {
 	TEXTURE_CIRCLES,
 	TEXTURE_KITTEN1,
 	TEXTURE_KITTEN2,
+	TEXTURE_FONT,
 
 	TEXTURE_COUNT
 };
@@ -29,6 +30,7 @@ SDL_Window* window = NULL;
 SDL_Surface* window_surface = NULL;
 SDL_Surface* current_image_surface = NULL;
 SDL_Renderer* window_renderer = NULL;
+TTF_Font* font = NULL;
 Texture textures[TEXTURE_COUNT];
 SDL_Rect sprite_clips[4];
 uint8_t alpha_fade = 1;
@@ -40,19 +42,20 @@ bool load_texture(const char* path, Texture* texture);
 void mod_color(Texture* texture, uint8_t red, uint8_t green, uint8_t blue);
 void set_blend_mode(Texture* texture, SDL_BlendMode blend_mode);
 void mod_alpha(Texture* texture, uint8_t alpha);
+bool load_font_texture(const char* text, SDL_Color color);
 
 bool load_media();
 void cleanup();
 void update_window_surface();
-void render_sprite(int, int, SDL_Rect*);
+void render_sprite(Texture*, int, int, SDL_Rect*);
 void render_sprite_fullscreen(Texture* texture);
 void render_circles();
 
 int main(int argc, char **argv) {
    
-	char file_path[260];
-	getcwd(file_path, 260);
-	printf("CWD: %s\n", file_path);
+	//char file_path[260];
+	//getcwd(file_path, 260);
+	//printf("CWD: %s\n", file_path);
 
 	if (!init_sdl()) return 1;
 
@@ -82,6 +85,10 @@ int main(int argc, char **argv) {
 		render_sprite_fullscreen(&textures[TEXTURE_KITTEN2]);
 
 		render_circles();
+
+		Texture* texture = &textures[TEXTURE_FONT];
+		SDL_Rect rect { 0, 0, texture->width, texture->height };
+		render_sprite(texture, (SCREEN_WIDTH - texture->width)/2, (SCREEN_HEIGHT - texture->height)/2, &rect);
 		
 		// update screen
 		SDL_RenderPresent(window_renderer);
@@ -103,17 +110,19 @@ void update_window_surface() {
 }
 
 void render_circles() { 
-	render_sprite(0,0, &sprite_clips[0]);
+	
+	Texture* texture = &textures[TEXTURE_CIRCLES];
+	
+	render_sprite(texture, 0,0, &sprite_clips[0]);
 
-	render_sprite(SCREEN_WIDTH - sprite_clips[1].w, 0, &sprite_clips[1]);
+	render_sprite(texture, SCREEN_WIDTH - sprite_clips[1].w, 0, &sprite_clips[1]);
 
-	render_sprite(0, SCREEN_HEIGHT - sprite_clips[2].h, &sprite_clips[2]);
+	render_sprite(texture, 0, SCREEN_HEIGHT - sprite_clips[2].h, &sprite_clips[2]);
 
-	render_sprite(SCREEN_WIDTH - sprite_clips[3].w, SCREEN_HEIGHT - sprite_clips[3].h, &sprite_clips[3]);
+	render_sprite(texture, SCREEN_WIDTH - sprite_clips[3].w, SCREEN_HEIGHT - sprite_clips[3].h, &sprite_clips[3]);
 }
 
-void render_sprite(int x, int y, SDL_Rect* clip_rect) {
-	Texture* texture = &textures[TEXTURE_CIRCLES];
+void render_sprite(Texture* texture, int x, int y, SDL_Rect* clip_rect) {
 	SDL_Rect rect = { x, y, texture->width, texture->height };
 	rect.w = clip_rect->w;
 	rect.h = clip_rect->h;
@@ -175,6 +184,33 @@ bool load_texture(const char* path, Texture* texture) {
 	return true;
 }
 
+bool load_font_texture(const char* text, SDL_Color color)
+{
+	Texture* texture = &textures[TEXTURE_FONT];
+	texture->sdl_texture = NULL;
+	texture->width = 0;
+	texture->height = 0;
+
+	SDL_Surface* text_surface = TTF_RenderText_Solid(font, text, color);
+	if (text_surface == NULL) {
+		printf("Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError());
+		return false;
+	}
+
+	texture->sdl_texture = SDL_CreateTextureFromSurface(window_renderer, text_surface);
+	if (texture->sdl_texture == NULL) { 
+		printf("Unable to create texture from rendered text! SDL Error: %s\n", SDL_GetError());
+		return false;
+	}
+
+	texture->width = text_surface->w;
+	texture->height = text_surface->h;
+
+	SDL_FreeSurface(text_surface);
+
+	return true;
+}
+
 void mod_color(Texture* texture, uint8_t red, uint8_t green, uint8_t blue)
 {
 	SDL_SetTextureColorMod(texture->sdl_texture, red, green, blue);
@@ -199,6 +235,14 @@ bool load_media() {
 	
 	if (!load_texture("assets/images/circles.png", &textures[TEXTURE_CIRCLES])) return false;
 	mod_color(&textures[TEXTURE_CIRCLES], 100, 100, 100);
+
+	font = TTF_OpenFont("assets/fonts/Miltown/Miltown_.ttf", 72);
+	if (font == NULL) { 
+		printf("Failed to load font! SDL_ttf Error: %s\n", TTF_GetError());
+		return false;
+	}
+	SDL_Color text_color = { 150, 0, 125 };
+	if (!load_font_texture(" THE MATRIX ", text_color)) return false;
 
 	// top left
 	sprite_clips[0].x = 0;
@@ -257,6 +301,11 @@ bool init_sdl() {
 		return false;
 	}
 
+	if (TTF_Init() == -1) { 
+		printf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
+		return false;
+	}
+
 	window_surface = SDL_GetWindowSurface(window);
 
 	return true;
@@ -271,9 +320,11 @@ void cleanup() {
 		}
 	}
 
+	TTF_CloseFont(font);
 	SDL_DestroyRenderer(window_renderer);
 	SDL_DestroyWindow(window);
     
+	TTF_Quit();
 	IMG_Quit();
 	SDL_Quit();
 }
