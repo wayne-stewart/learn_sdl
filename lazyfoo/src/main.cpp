@@ -10,19 +10,35 @@
 const int SCREEN_WIDTH = 1024;
 const int SCREEN_HEIGHT = 768;
 
+enum TEXTURES {
+	TEXTURE_CIRCLES,
+	TEXTURE_KITTEN1,
+	TEXTURE_KITTEN2,
+
+	TEXTURE_COUNT
+};
+
+typedef struct { 
+	SDL_Texture* sdl_texture;
+	int width;
+	int height;
+} Texture;
+
+
 SDL_Window* window = NULL;
 SDL_Surface* window_surface = NULL;
 SDL_Surface* current_image_surface = NULL;
 SDL_Renderer* window_renderer = NULL;
+Texture textures[TEXTURE_COUNT];
 SDL_Rect sprite_clips[4];
-SDL_Texture* sprite_sheet = NULL;
-int sprite_width = 0;
-int sprite_height = 0;
 
-bool init();
-SDL_Surface* load_optimized_image(const char*);
-SDL_Texture* load_texture(const char*);
-void mod_color(SDL_Texture* texture, uint8_t red, uint8_t green, uint8_t blue);
+bool init_sdl();
+SDL_Surface* load_optimized_image(const char* path);
+bool load_texture(const char* path, Texture* texture);
+void mod_color(Texture* texture, uint8_t red, uint8_t green, uint8_t blue);
+void set_blend_mode(Texture* texture, SDL_BlendMode blend_mode);
+void mod_alpha(Texture* texture, uint8_t alpha);
+
 bool load_media();
 void cleanup();
 void update_window_surface();
@@ -35,10 +51,7 @@ int main(int argc, char **argv) {
 	getcwd(file_path, 260);
 	printf("CWD: %s\n", file_path);
 
-	if (!init()) return 1;
-
-    SDL_FillRect(window_surface, NULL, SDL_MapRGB(window_surface->format, 0xFF, 0xFF, 0x00));
-    SDL_UpdateWindowSurface(window);
+	if (!init_sdl()) return 1;
 
 	load_media();
 
@@ -50,6 +63,9 @@ int main(int argc, char **argv) {
 				quit = true;
 			}
 		}
+		
+    	SDL_FillRect(window_surface, NULL, SDL_MapRGB(window_surface->format, 0xFF, 0xFF, 0x00));
+	    SDL_UpdateWindowSurface(window);
 
 		render_sprites();
 		
@@ -85,11 +101,12 @@ void render_sprites() {
 	render_sprite(SCREEN_WIDTH - sprite_clips[3].w, SCREEN_HEIGHT - sprite_clips[3].h, &sprite_clips[3]);
 }
 
-void render_sprite(int x, int y, SDL_Rect* clip_rect) { 
-	SDL_Rect rect = { x, y, sprite_width, sprite_height };
+void render_sprite(int x, int y, SDL_Rect* clip_rect) {
+	Texture texture = textures[TEXTURE_CIRCLES];
+	SDL_Rect rect = { x, y, texture.width, texture.height };
 	rect.w = clip_rect->w;
 	rect.h = clip_rect->h;
-	SDL_RenderCopy(window_renderer, sprite_sheet, clip_rect, &rect);
+	SDL_RenderCopy(window_renderer, texture.sdl_texture, clip_rect, &rect);
 }
 
 SDL_Surface* load_optimized_image(const char* path) { 
@@ -111,40 +128,60 @@ SDL_Surface* load_optimized_image(const char* path) {
 	return optimized_image;
 }
 
-SDL_Texture* load_texture(const char* path) {
-	SDL_Texture* texture = NULL;
-	
+bool load_texture(const char* path, Texture* texture) {
+
+	texture->sdl_texture = NULL;
+	texture->width = 0;
+	texture->height = 0;
+
 	SDL_Surface* image = IMG_Load(path);
 
 	if (image == NULL) { 
 		printf("Unable to load image %s! SDL Error: %s\n", path, IMG_GetError());
-		return 0;
+		return false;
 	}
 	
 	SDL_SetColorKey(image, SDL_TRUE, SDL_MapRGB(image->format, 0, 0xFF, 0xFF));
 
-	texture = SDL_CreateTextureFromSurface(window_renderer, image);
-	if (texture == NULL) {
+	SDL_Texture* sdl_texture = SDL_CreateTextureFromSurface(window_renderer, image);
+	if (sdl_texture == NULL) {
 		printf("Unable to load texture %s! SDL Error: %s\n", path, SDL_GetError());
-		return 0;
+		return false;
 	}
+
+	texture->sdl_texture = sdl_texture;
+	texture->width = image->w;
+	texture->height = image->h;
 
 	SDL_FreeSurface(image);
 
-	return texture;
+	return true;
 }
 
-void mod_color(SDL_Texture* texture, uint8_t red, uint8_t green, uint8_t blue)
+void mod_color(Texture* texture, uint8_t red, uint8_t green, uint8_t blue)
 {
-	SDL_SetTextureColorMod(texture, red, green, blue);
+	SDL_SetTextureColorMod(texture->sdl_texture, red, green, blue);
+}
+
+void set_blend_mode(Texture* texture, SDL_BlendMode blend_mode) 
+{
+	SDL_SetTextureBlendMode(texture->sdl_texture, blend_mode);
+}
+
+void mod_alpha(Texture* texture, uint8_t alpha)
+{
+	SDL_SetTextureAlphaMod(texture->sdl_texture, alpha);
 }
 
 bool load_media() {
 
-	sprite_sheet = load_texture("assets/images/circles.png");
-	if (sprite_sheet == NULL) return false;
+	if (!load_texture("assets/images/kitten1.jpg", &textures[TEXTURE_KITTEN1])) return false;
 
-	mod_color(sprite_sheet, 100, 100, 100);
+	if (!load_texture("assets/images/kitten2.jpg", &textures[TEXTURE_KITTEN2])) return false;
+	set_blend_mode(&textures[TEXTURE_KITTEN2], SDL_BLENDMODE_BLEND);
+	
+	if (!load_texture("assets/images/circles.png", &textures[TEXTURE_CIRCLES])) return false;
+	mod_color(&textures[TEXTURE_CIRCLES], 100, 100, 100);
 
 	// top left
 	sprite_clips[0].x = 0;
@@ -173,7 +210,7 @@ bool load_media() {
 	return true;
 }
 
-bool init() {
+bool init_sdl() {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		printf("SDL could not be initialized! SDL_Error: %s\n", SDL_GetError());
 		return false;
@@ -211,7 +248,12 @@ bool init() {
 
 void cleanup() {
 
-	SDL_DestroyTexture(sprite_sheet);
+	for(int i = 0; i < TEXTURE_COUNT; i++) { 
+		if (textures[i].sdl_texture != NULL) { 
+			SDL_DestroyTexture(textures[i].sdl_texture);
+		}
+	}
+
 	SDL_DestroyRenderer(window_renderer);
 	SDL_DestroyWindow(window);
     

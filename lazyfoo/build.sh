@@ -2,6 +2,8 @@
 
 FILE=build/app
 
+clear
+
 if test -f "$FILE"; then
 	rm build/app
 fi
