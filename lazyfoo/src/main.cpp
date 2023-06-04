@@ -31,6 +31,8 @@ SDL_Surface* current_image_surface = NULL;
 SDL_Renderer* window_renderer = NULL;
 Texture textures[TEXTURE_COUNT];
 SDL_Rect sprite_clips[4];
+uint8_t alpha_fade = 1;
+uint8_t alpha = 0;
 
 bool init_sdl();
 SDL_Surface* load_optimized_image(const char* path);
@@ -72,6 +74,12 @@ int main(int argc, char **argv) {
 	    //SDL_UpdateWindowSurface(window);
 
 		render_sprite_fullscreen(&textures[TEXTURE_KITTEN1]);
+
+		alpha += alpha_fade;
+		if (alpha >= 255) { alpha_fade = -1; alpha = 255; }
+		if (alpha <= 0) { alpha_fade = 1; alpha = 0; }
+		mod_alpha(&textures[TEXTURE_KITTEN2], alpha);
+		render_sprite_fullscreen(&textures[TEXTURE_KITTEN2]);
 
 		render_circles();
 		
