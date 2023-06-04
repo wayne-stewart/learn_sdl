@@ -43,7 +43,8 @@ bool load_media();
 void cleanup();
 void update_window_surface();
 void render_sprite(int, int, SDL_Rect*);
-void render_sprites();
+void render_sprite_fullscreen(Texture* texture);
+void render_circles();
 
 int main(int argc, char **argv) {
    
@@ -63,11 +64,16 @@ int main(int argc, char **argv) {
 				quit = true;
 			}
 		}
-		
-    	SDL_FillRect(window_surface, NULL, SDL_MapRGB(window_surface->format, 0xFF, 0xFF, 0x00));
-	    SDL_UpdateWindowSurface(window);
+	
+		//SDL_SetRenderDrawColor(window_renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+		//SDL_RenderClear(window_renderer);
 
-		render_sprites();
+    	//SDL_FillRect(window_surface, NULL, SDL_MapRGB(window_surface->format, 0xFF, 0xFF, 0x00));
+	    //SDL_UpdateWindowSurface(window);
+
+		render_sprite_fullscreen(&textures[TEXTURE_KITTEN1]);
+
+		render_circles();
 		
 		// update screen
 		SDL_RenderPresent(window_renderer);
@@ -88,10 +94,7 @@ void update_window_surface() {
 	SDL_UpdateWindowSurface(window);
 }
 
-void render_sprites() { 
-	SDL_SetRenderDrawColor(window_renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-	SDL_RenderClear(window_renderer);
-
+void render_circles() { 
 	render_sprite(0,0, &sprite_clips[0]);
 
 	render_sprite(SCREEN_WIDTH - sprite_clips[1].w, 0, &sprite_clips[1]);
@@ -102,11 +105,17 @@ void render_sprites() {
 }
 
 void render_sprite(int x, int y, SDL_Rect* clip_rect) {
-	Texture texture = textures[TEXTURE_CIRCLES];
-	SDL_Rect rect = { x, y, texture.width, texture.height };
+	Texture* texture = &textures[TEXTURE_CIRCLES];
+	SDL_Rect rect = { x, y, texture->width, texture->height };
 	rect.w = clip_rect->w;
 	rect.h = clip_rect->h;
-	SDL_RenderCopy(window_renderer, texture.sdl_texture, clip_rect, &rect);
+	SDL_RenderCopy(window_renderer, texture->sdl_texture, clip_rect, &rect);
+}
+
+void render_sprite_fullscreen(Texture* texture) { 
+	SDL_Rect render_rect = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+	SDL_Rect clip_rect = { 0, 0, texture->width, texture->height };
+	SDL_RenderCopy(window_renderer, texture->sdl_texture, &clip_rect, &render_rect);
 }
 
 SDL_Surface* load_optimized_image(const char* path) { 
