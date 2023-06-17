@@ -14,7 +14,8 @@ enum TEXTURES {
 	TEXTURE_CIRCLES,
 	TEXTURE_KITTEN1,
 	TEXTURE_KITTEN2,
-	TEXTURE_FONT,
+	TEXTURE_FONT_MATRIX_TITLE,
+	TEXTURE_FONT_MATRIX_CODE,
 
 	TEXTURE_COUNT
 };
@@ -30,7 +31,8 @@ SDL_Window* window = NULL;
 SDL_Surface* window_surface = NULL;
 SDL_Surface* current_image_surface = NULL;
 SDL_Renderer* window_renderer = NULL;
-TTF_Font* font = NULL;
+TTF_Font* font_matrix_title = NULL;
+TTF_Font* font_matrix_code = NULL;
 Texture textures[TEXTURE_COUNT];
 SDL_Rect sprite_clips[4];
 uint8_t alpha_fade = 1;
@@ -42,7 +44,7 @@ bool load_texture(const char* path, Texture* texture);
 void mod_color(Texture* texture, uint8_t red, uint8_t green, uint8_t blue);
 void set_blend_mode(Texture* texture, SDL_BlendMode blend_mode);
 void mod_alpha(Texture* texture, uint8_t alpha);
-bool load_font_texture(const char* text, SDL_Color color);
+bool load_font_texture(const char* text, SDL_Color color, Texture* texture);
 
 bool load_media();
 void cleanup();
@@ -86,7 +88,7 @@ int main(int argc, char **argv) {
 
 		render_circles();
 
-		Texture* texture = &textures[TEXTURE_FONT];
+		Texture* texture = &textures[TEXTURE_FONT_MATRIX_TITLE];
 		SDL_Rect size_rect { 0, 0, texture->width, texture->height };
 		SDL_Rect clip_rect { 0, 0, texture->width, texture->height };
 		int x = (SCREEN_WIDTH - size_rect.w)/2;
@@ -188,14 +190,13 @@ bool load_texture(const char* path, Texture* texture) {
 	return true;
 }
 
-bool load_font_texture(const char* text, SDL_Color color)
+bool load_font_texture(const char* text, SDL_Color color, Texture* texture)
 {
-	Texture* texture = &textures[TEXTURE_FONT];
 	texture->sdl_texture = NULL;
 	texture->width = 0;
 	texture->height = 0;
 
-	SDL_Surface* text_surface = TTF_RenderText_Solid(font, text, color);
+	SDL_Surface* text_surface = TTF_RenderText_Solid(font_matrix_title, text, color);
 	if (text_surface == NULL) {
 		printf("Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError());
 		return false;
@@ -240,13 +241,21 @@ bool load_media() {
 	if (!load_texture("assets/images/circles.png", &textures[TEXTURE_CIRCLES])) return false;
 	mod_color(&textures[TEXTURE_CIRCLES], 100, 100, 100);
 
-	font = TTF_OpenFont("assets/fonts/Miltown/Miltown_.ttf", 72);
-	if (font == NULL) { 
-		printf("Failed to load font! SDL_ttf Error: %s\n", TTF_GetError());
+	const char* matrix_code_title = "assets/fonts/Miltown/Miltown_.ttf";
+	font_matrix_title = TTF_OpenFont(matrix_code_title, 72);
+	if (font_matrix_title == NULL) { 
+		printf("Failed to load font %s\n SDL_ttf Error: %s\n", matrix_code_title, TTF_GetError());
 		return false;
 	}
 	SDL_Color text_color = { 75, 255, 125 };
-	if (!load_font_texture(" THE MATRIX ", text_color)) return false;
+	if (!load_font_texture(" THE MATRIX ", text_color, &textures[TEXTURE_FONT_MATRIX_TITLE])) return false;
+
+	const char* matrix_code_path = "assets/fonts/matrix_code_font.ttf";
+	font_matrix_code = TTF_OpenFont(matrix_code_path, 64);
+	if (font_matrix_code == NULL) { 
+		printf("Failed to load font %s\n SDL_ttf Error: %s\n", matrix_code_path, TTF_GetError());
+		return false;
+	}
 
 	// top left
 	sprite_clips[0].x = 0;
@@ -324,7 +333,8 @@ void cleanup() {
 		}
 	}
 
-	TTF_CloseFont(font);
+	TTF_CloseFont(font_matrix_title);
+	TTF_CloseFont(font_matrix_code);
 	SDL_DestroyRenderer(window_renderer);
 	SDL_DestroyWindow(window);
     
